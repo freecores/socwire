@@ -47,7 +47,7 @@ USE WORK.ALL;
 
 ENTITY receive_fifo IS
   GENERIC(
-          datawidth : NATURAL RANGE 8 TO 8192
+         datawidth : NATURAL RANGE 8 TO 8192
          );
   PORT(
        --== General Interface (Sync Rst, 50MHz Clock) ==--
