@@ -48,10 +48,12 @@ USE WORK.ALL;
 
 ENTITY socwire_codec IS
   GENERIC(
-          --== Set Codec Speed to system clock in nanoseconds! ==--
-	  --== USE GEREIC MAPPING FROM TOPLEVEL!!!             ==--
-	       bitwidth : NATURAL RANGE 8 TO 8192;
-               speed	: NATURAL RANGE 1 TO 100
+	      --== USE GEREIC MAPPING FROM TOPLEVEL!!!             ==--
+	      datawidth            : NATURAL RANGE 8 TO 8192:=8;
+         speed		            : NATURAL RANGE 1 TO 100:=10;		-- Set CODEC speed to system clock in nanoseconds !
+         after64              : NATURAL RANGE 1 TO 6400:=64;   -- Spacewire Standard 6400 = 6.4 us
+         after128             : NATURAL RANGE 1 TO 12800:=128; -- Spacewire Standard 12800 = 12.8 us                              
+	      disconnect_detection : NATURAL RANGE 1 TO 850:=85     -- Spacewire Standard 850 = 850 ns
          );
   PORT(
        --==  General Interface (Sync Rst, 50MHz Clock) ==--
@@ -61,30 +63,30 @@ ENTITY socwire_codec IS
 
        --== Link Enable Interface ==--
 
-       enable     : IN  STD_LOGIC;
-       disable    : IN  STD_LOGIC;
+       socw_en    : IN  STD_LOGIC;
+       socw_dis   : IN  STD_LOGIC;
 
        --== Serial Receive Interface ==--
 
-       rx         : IN  STD_LOGIC_VECTOR(bitwidth+1 DOWNTO 0);
+       rx         : IN  STD_LOGIC_VECTOR(datawidth+1 DOWNTO 0);
        rx_valid   : IN  STD_LOGIC;
 
        --== Serial Transmit Interface ==--
 
-       tx         : OUT STD_LOGIC_VECTOR(bitwidth+1 DOWNTO 0);
+       tx         : OUT STD_LOGIC_VECTOR(datawidth+1 DOWNTO 0);
        tx_valid	  : OUT STD_LOGIC;       
 
        --== Data Input Interface ==--
 
        dat_full   : OUT STD_LOGIC;
        dat_nwrite : IN  STD_LOGIC;
-       dat_din    : IN  STD_LOGIC_VECTOR(bitwidth DOWNTO 0);
+       dat_din    : IN  STD_LOGIC_VECTOR(datawidth DOWNTO 0);
 
        --== Data Output Interface ==--
 
        dat_nread  : IN  STD_LOGIC;
        dat_empty  : OUT STD_LOGIC;
-       dat_dout   : OUT STD_LOGIC_VECTOR(bitwidth DOWNTO 0);
+       dat_dout   : OUT STD_LOGIC_VECTOR(datawidth DOWNTO 0);
 
        --== Active Interface ==--
 
@@ -133,7 +135,7 @@ SIGNAL err_nchar : STD_LOGIC;
 
 SIGNAL dat_full_i   : STD_LOGIC;
 SIGNAL dat_nwrite_i : STD_LOGIC;
-SIGNAL dat_din_i    : STD_LOGIC_VECTOR(bitwidth DOWNTO 0);
+SIGNAL dat_din_i    : STD_LOGIC_VECTOR(datawidth DOWNTO 0);
 
 ---=======================================---
 --== Signal Declarations (Rx FIFO to Tx) ==--
@@ -155,7 +157,7 @@ SIGNAL fct_nwrite_i : STD_LOGIC;
 
 SIGNAL dat_nread_i : STD_LOGIC;
 SIGNAL dat_empty_i : STD_LOGIC;
-SIGNAL dat_dout_i  : STD_LOGIC_VECTOR(bitwidth DOWNTO 0);
+SIGNAL dat_dout_i  : STD_LOGIC_VECTOR(datawidth DOWNTO 0);
 
 ---=============================================---
 --== TESTBENCH : Type Declarations : TESTBENCH ==--
@@ -187,8 +189,9 @@ SIGNAL codec_state : ss;
 
 COMPONENT receiver
   GENERIC(
-            bitwidth : NATURAL RANGE 8 TO 8192;
-            speed	 : NATURAL RANGE 1 TO 100
+            datawidth : NATURAL RANGE 8 TO 8192;
+            speed	 : NATURAL RANGE 1 TO 100;
+			disconnect_detection : NATURAL RANGE 1 TO 850
          );
 	PORT( 
        --== General Interface (Sync Rst, 50MHz Clock) ==--
@@ -202,7 +205,7 @@ COMPONENT receiver
 
        --== External Receive Interface ==--
 
-       rx		 : IN  STD_LOGIC_VECTOR(bitwidth+1 DOWNTO 0);
+       rx		 : IN  STD_LOGIC_VECTOR(datawidth+1 DOWNTO 0);
        rx_valid	 : IN  STD_LOGIC;
 
        --== Character Interface ==--
@@ -223,7 +226,7 @@ COMPONENT receiver
 
        dat_nread : IN  STD_LOGIC;
        dat_empty : OUT STD_LOGIC;
-       dat_dout  : OUT STD_LOGIC_VECTOR(bitwidth DOWNTO 0);
+       dat_dout  : OUT STD_LOGIC_VECTOR(datawidth DOWNTO 0);
 
        --== FCT Output Interface ==--
 
@@ -235,7 +238,7 @@ END COMPONENT;
 COMPONENT receive_fifo
 
   GENERIC(
-          bitwidth : NATURAL RANGE 8 TO 8192
+          datawidth : NATURAL RANGE 8 TO 8192
          );
 
 	PORT(
@@ -252,13 +255,13 @@ COMPONENT receive_fifo
 
        dat_full   : OUT STD_LOGIC;
        dat_nwrite : IN  STD_LOGIC;
-       dat_din    : IN  STD_LOGIC_VECTOR(bitwidth DOWNTO 0);
+       dat_din    : IN  STD_LOGIC_VECTOR(datawidth DOWNTO 0);
 
        --== Data Output Interface ==--
 
        dat_nread  : IN  STD_LOGIC;
        dat_empty  : OUT STD_LOGIC;
-       dat_dout   : OUT STD_LOGIC_VECTOR(bitwidth DOWNTO 0);
+       dat_dout   : OUT STD_LOGIC_VECTOR(datawidth DOWNTO 0);
 
        --== FCT Output Interface ==--
 
@@ -269,7 +272,9 @@ END COMPONENT receive_fifo;
 
 COMPONENT state_machine
     GENERIC(  
-            speed	 : NATURAL RANGE 1 TO 100
+             speed	 : NATURAL RANGE 1 TO 100;
+			 after64   : NATURAL RANGE 1 TO 6400;
+			 after128  : NATURAL RANGE 1 TO 12800
            );
 	PORT(
        --==  General Interface (Sync Rst, 50MHz Clock) ==--
@@ -279,8 +284,8 @@ COMPONENT state_machine
 
        --== Link Enable Interface ==--
 
-       enable    : IN  STD_LOGIC;
-       disable   : IN  STD_LOGIC;
+       socw_en    : IN  STD_LOGIC;
+       socw_dis   : IN  STD_LOGIC;
 
        --== SoCWire Interface ==--
 
@@ -308,7 +313,7 @@ END COMPONENT state_machine;
 
 COMPONENT transmitter
   GENERIC(
-          bitwidth : NATURAL RANGE 8 TO 8192
+          datawidth : NATURAL RANGE 8 TO 8192
          );
 	PORT(
 
@@ -323,14 +328,14 @@ COMPONENT transmitter
 
        --== External Transmit Interface ==--
 
-       tx		  : OUT STD_LOGIC_VECTOR(bitwidth+1 DOWNTO 0);
+       tx		  : OUT STD_LOGIC_VECTOR(datawidth+1 DOWNTO 0);
        tx_valid   : OUT STD_LOGIC;
 
        --== Data Input Interface ==--
 
        dat_full   : OUT STD_LOGIC;
        dat_nwrite : IN  STD_LOGIC;
-       dat_din    : IN  STD_LOGIC_VECTOR(bitwidth DOWNTO 0);
+       dat_din    : IN  STD_LOGIC_VECTOR(datawidth DOWNTO 0);
 
        --== FCT Input Interface ==--
 
@@ -341,7 +346,7 @@ END COMPONENT transmitter;
 
 COMPONENT transmit_fifo
   GENERIC(
-          bitwidth : NATURAL RANGE 8 TO 8192
+          datawidth : NATURAL RANGE 8 TO 8192
          );
 	PORT(
        --== General Interface (Sync Rst, 50MHz Clock) ==--
@@ -357,13 +362,13 @@ COMPONENT transmit_fifo
 
        dat_full   : OUT STD_LOGIC;
        dat_nwrite : IN  STD_LOGIC;
-       dat_din    : IN  STD_LOGIC_VECTOR(bitwidth DOWNTO 0);
+       dat_din    : IN  STD_LOGIC_VECTOR(datawidth DOWNTO 0);
 
        --== Data Output Interface ==--
 
        dat_nread  : IN  STD_LOGIC;
        dat_empty  : OUT STD_LOGIC;
-       dat_dout   : OUT STD_LOGIC_VECTOR(bitwidth DOWNTO 0);
+       dat_dout   : OUT STD_LOGIC_VECTOR(datawidth DOWNTO 0);
 
        --== FCT Input Interface ==--
 
@@ -393,10 +398,11 @@ BEGIN
   --== SoCWire Receiver ==--
   ---======================---
 
-  U0 : receiver
+  rx0 : receiver
     GENERIC MAP
 	  ( speed => speed,
-	    bitwidth => bitwidth )  
+	    datawidth => datawidth,
+		disconnect_detection=>disconnect_detection) 
     PORT MAP
       (--==  General Interface (Sync Rst) ==--
        rst       => rst,
@@ -430,9 +436,9 @@ BEGIN
   --== Receive FIFO ==--
   ---================---
 
-  U1 : receive_fifo
+  rx_fifo : receive_fifo
       GENERIC MAP
-	  ( bitwidth => bitwidth ) 
+	  ( datawidth => datawidth ) 
     PORT MAP
       (--==  General Interface (Sync Rst) ==--
        rst        => rst,
@@ -457,16 +463,18 @@ BEGIN
   --== SoCWire State Machine ==--
   ---===========================---
 
-  U2 : state_machine
+  statem : state_machine
     GENERIC MAP
-	  ( speed =>  speed )  
+	  (  speed =>  speed,
+		 after64 =>after64,
+		 after128=>after128) 
     PORT MAP
       (--==  General Interface (Sync Rst, 50MHz Clock) ==--
        rst       => rst,
        clk       => clk,
        --== Link Enable Interface ==--
-       enable    => enable,
-       disable   => disable,
+       socw_en    => socw_en,
+       socw_dis   => socw_dis,
        --== SoCWire Interface ==--
        state     => state,
        --== Character Interface ==--
@@ -488,9 +496,9 @@ BEGIN
   --== SoCWire Transmitter ==--
   ---=========================---
 
-  U3 : transmitter
+  tx0 : transmitter
     GENERIC MAP
-	  ( bitwidth =>  bitwidth )   
+	  ( datawidth =>  datawidth )   
     PORT MAP
       (--== General Interface (Sync Rst, 50MHz Clock) ==--
        rst        => rst,
@@ -514,9 +522,9 @@ BEGIN
   --== Transmitter FIFO ==--
   ---====================---
 
-  U4 : transmit_fifo
+  tx_fifo : transmit_fifo
     GENERIC MAP
-	  ( bitwidth =>  bitwidth )   
+	  ( datawidth =>  datawidth )   
     PORT MAP
       (--== General Interface (Sync Rst, 50MHz Clock) ==--
        rst        => rst,
