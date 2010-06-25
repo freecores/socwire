@@ -9,7 +9,7 @@
 --== Project ...... SoCWire Switch Testbench                            ==--
 --== Version ...... 1.00                                                ==--
 --== Conception ... 22 April 2009                                       ==--
---== Modified ..... N/A                                                 ==--
+--== Modified ..... holgerm : minor bug fix marked with holgerm         ==--
 --==                                                                    ==--
 ---======================= End Copyright Notice =========================---
 
@@ -41,7 +41,12 @@ COMPONENT socwire_switch IS
   GENERIC(
           datawidth : NATURAL RANGE 8 TO 8192;
           nports     : NATURAL RANGE 2 TO 32;
-          speed : NATURAL RANGE  1 TO 100
+          speed : NATURAL RANGE  1 TO 100;
+          -- holgerm
+	       after64              : NATURAL RANGE 1 TO 6400:=6400;   -- Spacewire Standard 6400 = 6.4 us
+          after128             : NATURAL RANGE 1 TO 12800:=12800; -- Spacewire Standard 12800 = 12.8 us
+          disconnect_detection : NATURAL RANGE 1 TO 850:=850     -- Spacewire Standard 850 = 850 ns
+          -- holgerm
          );
   PORT(
        --==  General Interface (Sync Rst, 50MHz Clock) ==--
@@ -126,7 +131,17 @@ SIGNAL dat_din_P1 : STD_LOGIC_VECTOR (datawidth downto 0);
 SIGNAL dat_din_P2 : STD_LOGIC_VECTOR (datawidth downto 0);
 SIGNAL dat_din_P3 : STD_LOGIC_VECTOR (datawidth downto 0);
 
-
+-- holgerm
+-- compile with "vsim -novopt switch_tb" otherwise optimization will delete these signals
+SIGNAL dat_empty_P0 : STD_LOGIC;
+SIGNAL dat_empty_P1 : STD_LOGIC;
+SIGNAL dat_empty_P2 : STD_LOGIC;
+SIGNAL dat_empty_P3 : STD_LOGIC;
+SIGNAL dat_dout_P0 : STD_LOGIC_VECTOR (datawidth downto 0);
+SIGNAL dat_dout_P1 : STD_LOGIC_VECTOR (datawidth downto 0);
+SIGNAL dat_dout_P2 : STD_LOGIC_VECTOR (datawidth downto 0);
+SIGNAL dat_dout_P3 : STD_LOGIC_VECTOR (datawidth downto 0);
+-- holgerm
 
 BEGIN
 
@@ -137,7 +152,12 @@ BEGIN
       (
        datawidth =>datawidth,
        nports    => nports,
-       speed	  => speed
+       speed	  => speed,
+       -- holgerm
+       after64              =>after64,
+       after128             =>after128,
+       disconnect_detection =>disconnect_detection
+       -- holgerm
       )
     PORT MAP
       (--==  General Interface (Sync Rst) ==--
@@ -200,6 +220,19 @@ BEGIN
 	dat_din(17 downto 9) <=dat_din_P1; 
 	dat_din(26 downto 18)<=dat_din_P2; 
 	dat_din(35 downto 27)<=dat_din_P3; 
+   
+   -- holgerm
+   -- compile with "vsim -novopt switch_tb" otherwise optimization will delete these signals
+   dat_empty_P0 <= dat_empty(0);
+   dat_empty_P1 <= dat_empty(1);
+   dat_empty_P2 <= dat_empty(2);
+   dat_empty_P3 <= dat_empty(3);
+   dat_dout_P0 <= dat_dout(8  downto  0);
+   dat_dout_P1 <= dat_dout(17 downto  9);
+   dat_dout_P2 <= dat_dout(26 downto 18);
+   dat_dout_P3 <= dat_dout(35 downto 27);
+   -- holgerm
+   
 	
 	
 	tb : PROCESS
